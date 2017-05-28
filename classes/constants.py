@@ -1,0 +1,42 @@
+import time
+
+COLUMN_TIMESTAMP = 'Timestamp'
+COLUMN_FILENAME = 'Filename'
+COLUMN_SENSOR_1 = '1/Fp1'
+COLUMN_SENSOR_2 = '2/Fp2'
+COLUMN_SENSOR_3 = '3/Cz'
+COLUMN_SENSOR_4 = '4/Pz'
+COLUMN_SENSOR_5 = '5/P7'
+COLUMN_SENSOR_6 = '6/P8'
+COLUMN_SENSOR_7 = '7/O1'
+COLUMN_SENSOR_8 = '8/O2'
+COLUMN_SENSOR_9 = '9/CP5'
+COLUMN_SENSOR_10 = '10/CP6'
+COLUMN_SENSOR_11 = '11/CP1'
+COLUMN_SENSOR_12 = '12/CP2'
+COLUMN_SENSOR_13 = '13/PO3'
+COLUMN_SENSOR_14 = '14/PO4'
+COLUMN_SENSOR_15 = '15/P3'
+COLUMN_SENSOR_16 = '16/P4'
+ALL_COLUMNS = [COLUMN_TIMESTAMP, COLUMN_FILENAME, COLUMN_SENSOR_1, COLUMN_SENSOR_2, COLUMN_SENSOR_3, COLUMN_SENSOR_4,
+               COLUMN_SENSOR_5, COLUMN_SENSOR_6, COLUMN_SENSOR_7, COLUMN_SENSOR_8, COLUMN_SENSOR_9, COLUMN_SENSOR_10,
+               COLUMN_SENSOR_11, COLUMN_SENSOR_12, COLUMN_SENSOR_13, COLUMN_SENSOR_14, COLUMN_SENSOR_15,
+               COLUMN_SENSOR_16]
+COLUMN_THRESHOLD = 'Threshold'
+FREQ_HZ = 125.0
+NFFT = 256 * 2
+NCHANNELS = 16
+FIFTY_MICROVOLTS = 0.005
+
+verbose = True
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print '%r: %2.2f sec' % (method.__name__, te - ts)
+        return result
+
+    return timed
