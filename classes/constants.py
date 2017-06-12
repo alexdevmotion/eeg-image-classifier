@@ -28,7 +28,7 @@ NFFT = 256 * 2
 NCHANNELS = 16
 FIFTY_MICROVOLTS = 0.005
 
-verbose = True
+verbose = False
 
 def timeit(method):
     def timed(*args, **kw):

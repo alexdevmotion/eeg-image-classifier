@@ -18,8 +18,8 @@ def main():
                    constants.COLUMN_SENSOR_14, constants.COLUMN_SENSOR_16]
 
     def read_and_preprocess(path):
-        input = Input(path, ignore_cols=ignore_cols)
-        input.read_csv()
+        input = Input(ignore_cols=ignore_cols)
+        input.read_csv(path)
         input.make_column_uniform()
         input.replace_column_with_thresholds()
 
