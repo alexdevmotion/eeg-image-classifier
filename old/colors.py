@@ -11,11 +11,10 @@ import classes.constants as constants
 @constants.timeit
 def main():
     ignore_cols = [constants.COLUMN_TIMESTAMP, constants.COLUMN_SENSOR_1, constants.COLUMN_SENSOR_2,
-                   constants.COLUMN_SENSOR_11, constants.COLUMN_SENSOR_16]
+                   constants.COLUMN_SENSOR_3, constants.COLUMN_SENSOR_4]
 
-    input = Input('input/__Alexandru Constantin_5s_10_graveyardbeach_27052017_224455.csv', ignore_cols=ignore_cols)
+    input = Input('input/__Alexandru Constantin_3s_1_colors_simple_28052017_005402.csv', ignore_cols=ignore_cols)
     input.read_csv()
-    input.make_column_uniform()
     input.replace_column_with_thresholds()
 
     # @constants.timeit
@@ -48,10 +47,13 @@ def main():
 
     # @constants.timeit
     def classify_and_compute_precision(C=1.0, gamma='auto'):
-        classify = Classify(featureselect_train.components, labels_train, mode='randomforest')
+        mode = 'randomforest'
+        classify = Classify(featureselect_train.components, labels_train, mode=mode)
         classify.classify(C, gamma)
 
-        params_string = '[C=' + str(C) + '][gamma=' + str(gamma) + ']'
+        params_string = ''
+        if mode == 'svm':
+            params_string = '[C=' + str(C) + '][gamma=' + str(gamma) + ']'
 
         predicted_labels_test = classify.predict(featureselect_test.components)
 
