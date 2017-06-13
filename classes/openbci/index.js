@@ -119,6 +119,10 @@ var sampleFunc = sample => {
                     command: 'sample',
                     message: sample
                 });
+            } else {
+                sendToPython({
+                    command: 'dummy'
+                });
             }
         }
     }
@@ -186,6 +190,7 @@ var processInterfaceObject = (body) => {
             console.log('Node will start streaming')
             break;
         case 'stop':
+            sendStream = false;
             console.log('Node will stop streaming. NOT.')
             break;
         case 'kill':

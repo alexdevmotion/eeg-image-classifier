@@ -70,7 +70,7 @@ class Preprocess:
         overall_average = np.mean(medians.values())
         for column, median in medians.iteritems():
             if median/overall_average > ratio:
-                if constants.verbose: print 'Removed poorly recorded data for electrode', column
+                print '!!!!!Removed poorly recorded data for electrode', column
                 self.data.drop(column, axis=1, inplace=True)
 
     def detrend(self):

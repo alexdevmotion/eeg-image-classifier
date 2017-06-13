@@ -9,7 +9,9 @@ from classes.preprocess import Preprocess
 from classes.featureselect import FeatureSelect
 from classes.helpers import Helpers
 from classes.classify import Classify
+from classes.precision import Precision
 import classes.constants as constants
+from time import sleep
 
 DIR = 'experiments/colors'
 IMAGE_INTERVAL = 2
@@ -27,12 +29,12 @@ def get_most_common_prediction(predicted_labels):
     return np.argmax(counts)
 
 
-def gather_training_data():
+def gather_data(subdir):
     resultQueue = Queue.Queue()
     trainLogThread = []
 
     def startLogging():
-        print 'PYTHON: Starting displaying images and logging training data'
+        print 'PYTHON: Starting displaying images and logging data'
         imageWindow.handleNextImage()
         trainLogThread.append(openbci.startLoggingToArray(resultQueue))
 
@@ -46,7 +48,7 @@ def gather_training_data():
 
     tk = Tk()
     tk.withdraw()
-    trainDir = DIR + '/train'
+    trainDir = DIR + '/' + subdir
     images = ImageHelpers.getImagesInDirectory(trainDir)
     imageWindow = ImageHelpers.ImageWindow(trainDir, images, IMAGE_INTERVAL,
                                            openbci, CROP)
@@ -65,7 +67,7 @@ def input_preprocess_featureselect_arr(header, train_rows):
         input.make_column_uniform()
         threshold_to_filename = input.replace_column_with_thresholds()
 
-        # Plot.plot_without_threshold(input.data)
+        Plot.plot_without_threshold(input.data)
 
         def preprocess(data):
             preprocess = Preprocess(data)
@@ -105,7 +107,26 @@ def train(header, train_rows):
     return classify, threshold_to_filename
 
 
-class LivePredict():
+def predict(header, test_rows, classification_model):
+    data_test, test_components, useless = input_preprocess_featureselect_arr(header, test_rows)
+
+    labels_test = Helpers.extract_labels_from_dataframe(data_test)
+
+    predicted_labels_test = classification_model.predict(test_components)
+    precision_obj = Precision(real_labels=labels_test, predicted_labels=predicted_labels_test)
+    raw_precision = precision_obj.compute_raw_precision()
+    cat_precision = precision_obj.compute_per_category_median_precision()
+
+    Plot.plot_lists([
+        {'data': labels_test, 'label': 'Expected'},
+        {'data': predicted_labels_test, 'label': 'Predicted'}
+    ])
+
+    print 'raw_precision', ' = ', raw_precision
+    print 'cat_precision', ' = ', cat_precision
+
+
+class LivePredict:
     def __init__(self, classification_model, threshold_to_filename):
         self.classification_model = classification_model
         self.threshold_to_filename = threshold_to_filename
@@ -154,10 +175,14 @@ class LivePredict():
         print 'Prediction:', self.threshold_to_filename[most_common_prediction]
 
 
-header, train_rows = gather_training_data()
+header, train_rows = gather_data('train')
 print 'PYTHON: Training data gathering done'
 classification_model, threshold_to_filename = train(header, train_rows)
 print 'PYTHON: Training model done'
-LivePredict(classification_model, threshold_to_filename)
+sleep(5)
+header, test_rows = gather_data('test')
+print 'PYTHON: Test data gathering done'
+# LivePredict(classification_model, threshold_to_filename)
+predict(header, test_rows, classification_model)
 
 openbci.kill()
