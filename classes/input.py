@@ -31,13 +31,14 @@ class Input:
 
     def make_column_uniform(self, column_name=constants.COLUMN_FILENAME):
         self.data[column_name] = self.data[column_name].apply(lambda filename: re.sub(r' *[\(\.].*', '', filename))
+        self.data[column_name] = self.data[column_name].apply(lambda filename: re.sub(r'^.*\]', '', filename))
         if constants.verbose: print 'Made', column_name, 'column uniform'
 
     def read_csv_emotiv(self):
         self.data = pandas.read_csv(self.path, memory_map=True)
 
     def replace_column_with_thresholds(self, column_name=constants.COLUMN_FILENAME, start_threshold=1,
-                                       new_column_name=constants.COLUMN_THRESHOLD, threshold_value=None):
+                                       new_column_name=constants.COLUMN_THRESHOLD, threshold_value=None, mapping=None):
 
         threshold_to_filename = {}
         if threshold_value:
@@ -52,6 +53,8 @@ class Input:
                 indices = Helpers.get_indices_from_value(self.data, cur_val, column_name=constants.COLUMN_FILENAME)
                 if indices is None:
                     break
+                if mapping is not None:
+                    cur_threshold = [key for key, value in mapping.iteritems() if value == cur_val][0]
                 for index in indices:
                     self.data.set_value(index, column_name, cur_threshold)
                 threshold_to_filename[cur_threshold] = cur_val

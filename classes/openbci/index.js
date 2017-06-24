@@ -187,11 +187,11 @@ var processInterfaceObject = (body) => {
             break;
         case 'start':
             sendStream = true;
-            console.log('Node will start streaming')
+            console.log('Node will start streaming to python')
             break;
         case 'stop':
             sendStream = false;
-            console.log('Node will stop streaming. NOT.')
+            console.log('Node will stop streaming to python')
             break;
         case 'kill':
             ourBoard.streamStop()

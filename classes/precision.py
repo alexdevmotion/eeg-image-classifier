@@ -16,7 +16,7 @@ class Precision:
         indices = [i for i, x in enumerate(self.real_labels) if x == treshold]
         if len(indices) == 0:
             return None
-        counts = np.bincount(self.predicted_labels[indices])
+        counts = np.bincount(np.array(self.predicted_labels[indices]).astype(int))
         return np.argmax(counts)
 
     def compute_per_category_median_precision(self, start_threshold=1):

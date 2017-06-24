@@ -64,6 +64,7 @@ class Preprocess:
         self.freq = freq
 
     def discard_columns_by_ratio_to_median(self, ratio=1.1):
+        no_removed_channels = 0
         medians = {}
         for column in (x for x in self.data if x not in self.ignored_cols):
             medians[column] = self.data[column].abs().median()
@@ -72,6 +73,8 @@ class Preprocess:
             if median/overall_average > ratio:
                 print '!!!!!Removed poorly recorded data for electrode', column
                 self.data.drop(column, axis=1, inplace=True)
+                no_removed_channels += 1
+        return no_removed_channels
 
     def detrend(self):
         for column in (x for x in self.data if x not in self.ignored_cols):

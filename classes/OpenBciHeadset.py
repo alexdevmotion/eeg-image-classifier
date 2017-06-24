@@ -12,7 +12,6 @@ class OpenBciHeadset:
     def __init__(self):
         self.interface = Interface(verbose=verbose)
         self.startNode()
-        self.keepLogging = True
         self.doneLogging = False
 
     def startNode(self):
@@ -66,6 +65,7 @@ class OpenBciHeadset:
         return False
 
     def stopLogging(self):
+        print 'PYTHON: Sending stop command; done logging'
         self.doneLogging = True
         self.interface.send(json.dumps({
             'command': 'stop'
@@ -98,8 +98,6 @@ class OpenBciHeadset:
         self.doneLogging = False
         while not self.doneLogging:
             msg = self.interface.recv()
-            if not self.keepLogging:
-                break
             try:
                 dicty = json.loads(msg)
                 command = dicty.get('command')
@@ -129,8 +127,6 @@ class OpenBciHeadset:
         self.doneLogging = False
         while not self.doneLogging:
             msg = self.interface.recv()
-            if not self.keepLogging:
-                break
             try:
                 dicty = json.loads(msg)
                 command = dicty.get('command')

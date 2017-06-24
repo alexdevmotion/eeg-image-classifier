@@ -10,18 +10,20 @@ import classes.constants as constants
 
 # @constants.timeit
 def main():
-    path1 = 'input/session_2/__Alexandru Constantin_2s_1_colors_simple_28052017_195123.csv'
-    path2 = 'input/session_2/__Alexandru Constantin_2s_1_colors_simple_28052017_195703.csv'
+    path1 = 'input/session_3/__Alexandru Constantin_2s_1_colors_simple_15062017_222039.csv'
+    path2 = 'input/session_3/__Alexandru Constantin_2s_1_colors_simple_reordered_15062017_221958.csv'
 
     ignore_cols = [constants.COLUMN_TIMESTAMP, constants.COLUMN_SENSOR_1, constants.COLUMN_SENSOR_2,
-                   constants.COLUMN_SENSOR_9, constants.COLUMN_SENSOR_11, constants.COLUMN_SENSOR_13,
-                   constants.COLUMN_SENSOR_14, constants.COLUMN_SENSOR_16]
+                   constants.COLUMN_SENSOR_9, constants.COLUMN_SENSOR_10]
 
-    def read_and_preprocess(path):
+    def read_and_preprocess(path, mapping=None):
         input = Input(ignore_cols=ignore_cols)
         input.read_csv(path)
         input.make_column_uniform()
-        input.replace_column_with_thresholds()
+        if mapping is None:
+            mapping = input.replace_column_with_thresholds()
+        else:
+            input.replace_column_with_thresholds(mapping=mapping)
 
         # Plot.plot_without_threshold(input.data)
 
@@ -31,9 +33,10 @@ def main():
             preprocess.remove_dc_offset()
             preprocess.resample(100)
             preprocess.detrend()
+            preprocess.discard_columns_by_ratio_to_median()
             # preprocess.notch_filter(50)
             preprocess.bandpass_filter(1, 50)
-            # preprocess.discard_datapoints_below_or_over()
+            preprocess.discard_datapoints_below_or_over()
             # preprocess.discard_datapoints_by_ratio_to_median()
             # preprocess.fft()
             preprocess.min_max_scale()
@@ -41,10 +44,10 @@ def main():
 
         preprocessed_data = preprocess(input.data)
         # Plot.plot_without_threshold(preprocessed_data)
-        return preprocessed_data
+        return preprocessed_data, mapping
 
-    data_train = read_and_preprocess(path1)
-    data_test = read_and_preprocess(path2)
+    data_train, mapping = read_and_preprocess(path1)
+    data_test, useless = read_and_preprocess(path2, mapping)
 
     # [data_train, data_test] = Helpers.split_by_column_into_train_test(preprocessed_data)
 
@@ -62,7 +65,6 @@ def main():
         mode = 'voting'
         classify = Classify(featureselect_train.components, labels_train, mode=mode)
         classify.classify(['nearestneighbors', 'adaboost', 'randomforest'], 'soft', [3, 2, 1])
-        # classify.classify()
 
         params_string = ''
         if mode == 'svm':

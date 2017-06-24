@@ -3,18 +3,24 @@ from PIL import ImageTk, Image
 import tkMessageBox
 import sys
 import os
+import random
 
 
 def getNoImagesInDirectory(dir):
     return len(getImagesInDirectory(dir))
 
 
-def getImagesInDirectory(dir):
+def getImagesInDirectory(dir, randomize=False, duplicates=1):
     files = os.listdir(dir)
     images = []
     for file in files:
         if file.lower().endswith((".jpg", ".png", ".jpeg", ".gif")):
             images.append(file)
+    while duplicates > 1:
+        images.extend(images)
+        duplicates -= 1
+    if randomize:
+        random.shuffle(images)
     return images
 
 
@@ -94,10 +100,11 @@ class ImageWindow:
                 self.threadedTasks.setCurrentFileName(curImage)
                 self.displayImage(self.dir + "/" + curImage)
                 self.curImageIndex += 1
+                interval = int(self.imageInterval * 1000)
                 if keep_going:
-                    self.window.after(self.imageInterval * 1000, self.handleNextImage)
+                    self.window.after(interval, self.handleNextImage)
                 else:
-                    self.window.after(self.imageInterval * 1000, self.experimentStoppedByUser)
+                    self.window.after(interval, self.experimentStoppedByUser)
             except IndexError:
                 self.experimentStoppedByUser()
                 return False

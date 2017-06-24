@@ -14,12 +14,12 @@ import classes.constants as constants
 from time import sleep
 
 DIR = 'experiments/colors'
-IMAGE_INTERVAL = 2
+TRAIN_IMAGE_INTERVAL = 2
+TEST_IMAGE_INTERVAL = 2
 CROP = True
 IGNORE_COLS = [constants.COLUMN_TIMESTAMP, constants.COLUMN_SENSOR_1, constants.COLUMN_SENSOR_2]
 
 openbci = OpenBciThreadedTasks()
-
 openbci.waitStreamReady().join()
 print 'PYTHON: Stream is ready'
 
@@ -29,9 +29,12 @@ def get_most_common_prediction(predicted_labels):
     return np.argmax(counts)
 
 
-def gather_data(subdir):
+def gather_data(subdir, randomize, duplicates):
     resultQueue = Queue.Queue()
     trainLogThread = []
+    imageInterval = TRAIN_IMAGE_INTERVAL
+    if subdir == 'test':
+        imageInterval = TEST_IMAGE_INTERVAL
 
     def startLogging():
         print 'PYTHON: Starting displaying images and logging data'
@@ -40,7 +43,7 @@ def gather_data(subdir):
 
     def start():
         startLogging()
-        duration = 3000 + len(images) * IMAGE_INTERVAL * 1000
+        duration = int(len(images) * imageInterval * 1500)
         tk.after(duration, stop)
 
     def stop():
@@ -49,9 +52,8 @@ def gather_data(subdir):
     tk = Tk()
     tk.withdraw()
     trainDir = DIR + '/' + subdir
-    images = ImageHelpers.getImagesInDirectory(trainDir)
-    imageWindow = ImageHelpers.ImageWindow(trainDir, images, IMAGE_INTERVAL,
-                                           openbci, CROP)
+    images = ImageHelpers.getImagesInDirectory(trainDir, randomize, duplicates)
+    imageWindow = ImageHelpers.ImageWindow(trainDir, images, imageInterval, openbci, CROP)
     imageWindow.tkAndWindow(tk)
     start()
     tk.mainloop()
@@ -60,14 +62,14 @@ def gather_data(subdir):
     return resultQueue.get()
 
 
-def input_preprocess_featureselect_arr(header, train_rows):
+def input_preprocess_featureselect_arr(header, train_rows, mapping=None):
     def read_and_preprocess(header, train_rows):
         input = Input(ignore_cols=IGNORE_COLS)
         input.from_array(header, train_rows)
         input.make_column_uniform()
-        threshold_to_filename = input.replace_column_with_thresholds()
+        threshold_to_filename = input.replace_column_with_thresholds(mapping=mapping)
 
-        Plot.plot_without_threshold(input.data)
+        # Plot.plot_without_threshold(input.data)
 
         def preprocess(data):
             preprocess = Preprocess(data)
@@ -96,7 +98,6 @@ def input_preprocess_featureselect_arr(header, train_rows):
 
 
 def train(header, train_rows):
-
     data_train, train_components, threshold_to_filename = input_preprocess_featureselect_arr(header, train_rows)
 
     labels_train = Helpers.extract_labels_from_dataframe(data_train)
@@ -107,36 +108,37 @@ def train(header, train_rows):
     return classify, threshold_to_filename
 
 
-def predict(header, test_rows, classification_model):
-    data_test, test_components, useless = input_preprocess_featureselect_arr(header, test_rows)
+def predict(header, test_rows, classification_model, threshold_to_filename):
+    data_test, test_components, useless = input_preprocess_featureselect_arr(header, test_rows, mapping=threshold_to_filename)
 
     labels_test = Helpers.extract_labels_from_dataframe(data_test)
 
     predicted_labels_test = classification_model.predict(test_components)
     precision_obj = Precision(real_labels=labels_test, predicted_labels=predicted_labels_test)
-    raw_precision = precision_obj.compute_raw_precision()
-    cat_precision = precision_obj.compute_per_category_median_precision()
 
     Plot.plot_lists([
         {'data': labels_test, 'label': 'Expected'},
         {'data': predicted_labels_test, 'label': 'Predicted'}
     ])
 
-    print 'raw_precision', ' = ', raw_precision
-    print 'cat_precision', ' = ', cat_precision
+    raw_precision = precision_obj.compute_raw_precision()
+    cat_precision = precision_obj.compute_per_category_median_precision()
+    print 'raw_precision =', raw_precision
+    print 'cat_precision =', cat_precision
 
 
 class LivePredict:
-    def __init__(self, classification_model, threshold_to_filename):
+    def __init__(self, classification_model, threshold_to_filename, randomize=False):
         self.classification_model = classification_model
         self.threshold_to_filename = threshold_to_filename
         self.resultQueue = Queue.Queue()
         self.test_log_thread = [None]
+        self.randomize = randomize
 
         testDir = DIR + '/test'
-        images = ImageHelpers.getImagesInDirectory(testDir)
-        self.imageWindow = ImageHelpers.ImageWindow(testDir, images, IMAGE_INTERVAL,
-                                               openbci, CROP)
+        images = ImageHelpers.getImagesInDirectory(testDir, randomize=self.randomize)
+        self.imageWindow = ImageHelpers.ImageWindow(testDir, images, TEST_IMAGE_INTERVAL,
+                                                    openbci, CROP)
         self.handleNextImage()
 
     def startLogging(self):
@@ -148,7 +150,7 @@ class LivePredict:
     def start(self):
         imagesRemaining = self.startLogging()
         if imagesRemaining:
-            duration = 100 + IMAGE_INTERVAL * 1000
+            duration = int(100 + TRAIN_IMAGE_INTERVAL * 1000)
             self.tk.after(duration, self.stop)
         return imagesRemaining
 
@@ -175,14 +177,14 @@ class LivePredict:
         print 'Prediction:', self.threshold_to_filename[most_common_prediction]
 
 
-header, train_rows = gather_data('train')
+header, train_rows = gather_data('train', randomize=True, duplicates=3)
 print 'PYTHON: Training data gathering done'
 classification_model, threshold_to_filename = train(header, train_rows)
 print 'PYTHON: Training model done'
 sleep(5)
-header, test_rows = gather_data('test')
+useless, test_rows = gather_data('test', randomize=True, duplicates=1)
 print 'PYTHON: Test data gathering done'
-# LivePredict(classification_model, threshold_to_filename)
-predict(header, test_rows, classification_model)
+# LivePredict(classification_model, threshold_to_filename, randomize=True)
+predict(header, test_rows, classification_model, threshold_to_filename)
 
 openbci.kill()
