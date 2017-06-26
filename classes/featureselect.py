@@ -6,12 +6,12 @@ import numpy as np
 
 
 class FeatureSelect:
-    def __init__(self, data, ignored_cols=constants.COLUMN_THRESHOLD):
+    def __init__(self, data, extra_fit=False):
         self.data = data
-        self.matrix = data.as_matrix(x for x in data.columns if x not in ignored_cols)
-        self.ignored_cols = ignored_cols
+        self.matrix = data.as_matrix(x for x in data.columns if x not in constants.COLUMN_THRESHOLD)
         self.components = self.matrix
         self.features = None
+        self.extra_fit = extra_fit
 
     def pca(self, no_components=2):
         self.features = decomposition.PCA(n_components=no_components)
@@ -26,8 +26,11 @@ class FeatureSelect:
         self.fit()
 
     def fit(self):
-        added_col = self.data.as_matrix(x for x in self.data.columns if x in self.ignored_cols and re.match("^[S-U].*", x))
-        for arr in added_col:
-            if uniform(0, 1) > 0.81:
-                arr[0] = randrange(1, 6)
-        self.components = np.c_[self.features.fit(self.matrix).transform(self.matrix), added_col]
+        if self.extra_fit:
+            added_col = self.data.as_matrix(x for x in self.data.columns if x in constants.COLUMN_THRESHOLD and re.match("^[S-U].*", x))
+            for arr in added_col:
+                if uniform(0, 1) > 0.81:
+                    arr[0] = randrange(1, 6)
+            self.components = np.c_[self.features.fit(self.matrix).transform(self.matrix), added_col]
+        else:
+            self.features.fit(self.matrix).transform(self.matrix)
