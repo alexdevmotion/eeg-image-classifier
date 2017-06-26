@@ -3,7 +3,6 @@ import constants
 import pandas
 from scipy import signal
 from scipy import fftpack
-from sklearn import preprocessing
 from collections import OrderedDict
 from helpers import Helpers
 
@@ -70,7 +69,7 @@ class Preprocess:
             medians[column] = self.data[column].abs().median()
         overall_average = np.mean(medians.values())
         for column, median in medians.iteritems():
-            if median/overall_average > ratio or median > constants.FIFTY_MICROVOLTS:
+            if median/overall_average > ratio or median > constants.MICROVOLTS_LIMIT or median < -constants.MICROVOLTS_LIMIT:
                 if constants.verbose: print '!!!!!Removed poorly recorded data for electrode', column
                 self.data.drop(column, axis=1, inplace=True)
                 no_removed_channels += 1
@@ -85,7 +84,7 @@ class Preprocess:
     def convert_to_matrix(self):
         self.data = self.data.as_matrix(x for x in self.data.columns if x not in self.ignored_cols)
 
-    def discard_datapoints_below_or_over(self, max_val=constants.FIFTY_MICROVOLTS):
+    def discard_datapoints_below_or_over(self, max_val=constants.MICROVOLTS_LIMIT):
         indexes_to_remove = []
         for index, row in self.data.iterrows():
             if any(val >= max_val or val <= -max_val for val in row[1:]):

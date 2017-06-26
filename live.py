@@ -29,7 +29,7 @@ def get_most_common_prediction(predicted_labels):
     return np.argmax(counts)
 
 
-def gather_data(subdir, randomize, duplicates):
+def gather_data(subdir, randomize, duplicates=1):
     resultQueue = Queue.Queue()
     trainLogThread = []
     imageInterval = TRAIN_IMAGE_INTERVAL
@@ -62,54 +62,55 @@ def gather_data(subdir, randomize, duplicates):
     return resultQueue.get()
 
 
-def input_preprocess_featureselect_arr(header, train_rows, mapping=None):
+def input_preprocess_featureselect_arr(header, train_rows, mapping=None, do_col=False):
     def read_and_preprocess(header, train_rows):
         input = Input(ignore_cols=IGNORE_COLS)
         input.from_array(header, train_rows)
         input.make_column_uniform()
         threshold_to_filename = input.replace_column_with_thresholds(mapping=mapping)
 
-        # Plot.plot_without_threshold(input.data)
+        Plot.plot_without_threshold(input.data)
 
         def preprocess(data):
             preprocess = Preprocess(data)
             preprocess.remove_dc_offset()
             preprocess.resample(100)
             preprocess.detrend()
-            preprocess.discard_columns_by_ratio_to_median()
+            n_channels = preprocess.discard_columns_by_ratio_to_median()
             # preprocess.notch_filter(50)
             preprocess.bandpass_filter(1, 50)
             # preprocess.discard_datapoints_below_or_over()
             # preprocess.discard_datapoints_by_ratio_to_median()
             # preprocess.fft()
             preprocess.min_max_scale()
-            return preprocess.data
+            return preprocess.data, n_channels
 
-        preprocessed_data = preprocess(input.data)
-        # Plot.plot_without_threshold(preprocessed_data)
-        return preprocessed_data, threshold_to_filename
+        preprocessed_data, n_channels = preprocess(input.data)
+        Plot.plot_without_threshold(preprocessed_data)
+        return preprocessed_data, threshold_to_filename, n_channels
 
-    data, threshold_to_filename = read_and_preprocess(header, train_rows)
+    data, threshold_to_filename, n_channels = read_and_preprocess(header, train_rows)
 
-    featureselect = FeatureSelect(data)
+    do_col = do_col or (n_channels <= constants.CHANNEL_TRESHOLD)
+    featureselect = FeatureSelect(data, do_col)
     featureselect.pca()
 
-    return data, featureselect.components, threshold_to_filename
+    return data, featureselect.components, threshold_to_filename, do_col
 
 
 def train(header, train_rows):
-    data_train, train_components, threshold_to_filename = input_preprocess_featureselect_arr(header, train_rows)
+    data_train, train_components, threshold_to_filename, do_col = input_preprocess_featureselect_arr(header, train_rows)
 
     labels_train = Helpers.extract_labels_from_dataframe(data_train)
 
     mode = 'voting'
     classify = Classify(train_components, labels_train, mode=mode)
     classify.classify(['nearestneighbors', 'adaboost', 'randomforest'], 'soft', [3, 2, 1])
-    return classify, threshold_to_filename
+    return classify, threshold_to_filename, do_col
 
 
-def predict(header, test_rows, classification_model, threshold_to_filename):
-    data_test, test_components, useless = input_preprocess_featureselect_arr(header, test_rows, mapping=threshold_to_filename)
+def predict(header, test_rows, classification_model, threshold_to_filename, do_col):
+    data_test, test_components, useless, useless = input_preprocess_featureselect_arr(header, test_rows, threshold_to_filename, do_col)
 
     labels_test = Helpers.extract_labels_from_dataframe(data_test)
 
@@ -127,64 +128,64 @@ def predict(header, test_rows, classification_model, threshold_to_filename):
     print 'cat_precision =', cat_precision
 
 
-class LivePredict:
-    def __init__(self, classification_model, threshold_to_filename, randomize=False):
-        self.classification_model = classification_model
-        self.threshold_to_filename = threshold_to_filename
-        self.resultQueue = Queue.Queue()
-        self.test_log_thread = [None]
-        self.randomize = randomize
+# class LivePredict:
+#     def __init__(self, classification_model, threshold_to_filename, randomize=False):
+#         self.classification_model = classification_model
+#         self.threshold_to_filename = threshold_to_filename
+#         self.resultQueue = Queue.Queue()
+#         self.test_log_thread = [None]
+#         self.randomize = randomize
+#
+#         testDir = DIR + '/test'
+#         images = ImageHelpers.getImagesInDirectory(testDir, randomize=self.randomize)
+#         self.imageWindow = ImageHelpers.ImageWindow(testDir, images, TEST_IMAGE_INTERVAL,
+#                                                     openbci, CROP)
+#         self.handleNextImage()
+#
+#     def startLogging(self):
+#         imagesRemaining = self.imageWindow.handleNextImage(keep_going=False)
+#         if imagesRemaining:
+#             self.test_log_thread[0] = openbci.startLoggingToArray(self.resultQueue)
+#         return imagesRemaining
+#
+#     def start(self):
+#         imagesRemaining = self.startLogging()
+#         if imagesRemaining:
+#             duration = int(100 + TRAIN_IMAGE_INTERVAL * 1000)
+#             self.tk.after(duration, self.stop)
+#         return imagesRemaining
+#
+#     def stop(self):
+#         self.tk.destroy()
+#
+#     def handleNextImage(self):
+#         self.tk = Tk()
+#         self.tk.withdraw()
+#         self.imageWindow.tkAndWindow(self.tk)
+#         imagesRemaining = self.start()
+#         if imagesRemaining:
+#             self.tk.mainloop()
+#             self.test_log_thread[0].join()
+#             header, test_rows = self.resultQueue.get()
+#             self.doPredict(header, test_rows)
+#             self.handleNextImage()
+#
+#     def doPredict(self, header, test_rows, do_col):
+#         data, components_test, useless = input_preprocess_featureselect_arr(header, test_rows, do_col)
+#         predicted_labels = self.classification_model.predict(components_test)
+#         print predicted_labels
+#         most_common_prediction = get_most_common_prediction(predicted_labels)
+#         print 'Prediction:', self.threshold_to_filename[most_common_prediction]
 
-        testDir = DIR + '/test'
-        images = ImageHelpers.getImagesInDirectory(testDir, randomize=self.randomize)
-        self.imageWindow = ImageHelpers.ImageWindow(testDir, images, TEST_IMAGE_INTERVAL,
-                                                    openbci, CROP)
-        self.handleNextImage()
 
-    def startLogging(self):
-        imagesRemaining = self.imageWindow.handleNextImage(keep_going=False)
-        if imagesRemaining:
-            self.test_log_thread[0] = openbci.startLoggingToArray(self.resultQueue)
-        return imagesRemaining
-
-    def start(self):
-        imagesRemaining = self.startLogging()
-        if imagesRemaining:
-            duration = int(100 + TRAIN_IMAGE_INTERVAL * 1000)
-            self.tk.after(duration, self.stop)
-        return imagesRemaining
-
-    def stop(self):
-        self.tk.destroy()
-
-    def handleNextImage(self):
-        self.tk = Tk()
-        self.tk.withdraw()
-        self.imageWindow.tkAndWindow(self.tk)
-        imagesRemaining = self.start()
-        if imagesRemaining:
-            self.tk.mainloop()
-            self.test_log_thread[0].join()
-            header, test_rows = self.resultQueue.get()
-            self.doPredict(header, test_rows)
-            self.handleNextImage()
-
-    def doPredict(self, header, test_rows):
-        data, components_test, useless = input_preprocess_featureselect_arr(header, test_rows)
-        predicted_labels = self.classification_model.predict(components_test)
-        print predicted_labels
-        most_common_prediction = get_most_common_prediction(predicted_labels)
-        print 'Prediction:', self.threshold_to_filename[most_common_prediction]
-
-
-header, train_rows = gather_data('train', randomize=True, duplicates=3)
+header, train_rows = gather_data('train', randomize=True)
 print 'PYTHON: Training data gathering done'
-classification_model, threshold_to_filename = train(header, train_rows)
+classification_model, threshold_to_filename, do_col = train(header, train_rows)
 print 'PYTHON: Training model done'
 sleep(5)
-useless, test_rows = gather_data('test', randomize=True, duplicates=1)
+useless, test_rows = gather_data('test', randomize=True)
 print 'PYTHON: Test data gathering done'
 # LivePredict(classification_model, threshold_to_filename, randomize=True)
-predict(header, test_rows, classification_model, threshold_to_filename)
+predict(header, test_rows, classification_model, threshold_to_filename, do_col)
 
 openbci.kill()

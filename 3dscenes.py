@@ -40,21 +40,21 @@ def main():
             # preprocess.discard_datapoints_by_ratio_to_median()
             # preprocess.fft()
             preprocess.min_max_scale()
-            return preprocess.data
+            return preprocess.data, n_channels
 
-        preprocessed_data = preprocess(input.data)
+        preprocessed_data, n_channels = preprocess(input.data)
         # Plot.plot_without_threshold(preprocessed_data)
         return preprocessed_data, mapping, n_channels
 
     data_train, mapping, n_channels = read_and_preprocess(path1)
-    data_test, useless = read_and_preprocess(path2, mapping)
+    data_test, useless, useless = read_and_preprocess(path2, mapping)
 
     # [data_train, data_test] = Helpers.split_by_column_into_train_test(preprocessed_data)
 
-    featureselect_train = FeatureSelect(data_train, n_channels < constants.CHANNEL_TRESHOLD)
+    featureselect_train = FeatureSelect(data_train, n_channels <= constants.CHANNEL_TRESHOLD)
     featureselect_train.pca()
 
-    featureselect_test = FeatureSelect(data_test, n_channels < constants.CHANNEL_TRESHOLD)
+    featureselect_test = FeatureSelect(data_test, n_channels <= constants.CHANNEL_TRESHOLD)
     featureselect_test.pca()
 
     labels_train = Helpers.extract_labels_from_dataframe(data_train)

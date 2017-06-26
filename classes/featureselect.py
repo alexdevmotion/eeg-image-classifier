@@ -27,10 +27,10 @@ class FeatureSelect:
 
     def fit(self):
         if self.extra_fit:
-            added_col = self.data.as_matrix(x for x in self.data.columns if x in constants.COLUMN_THRESHOLD and re.match("^[S-U].*", x))
-            for arr in added_col:
+            col = self.data.as_matrix(x for x in self.data.columns if x in constants.COLUMN_THRESHOLD and re.match("^[S-U].*", x))
+            for arr in col:
                 if uniform(0, 1) > 0.81:
                     arr[0] = randrange(1, 6)
-            self.components = np.c_[self.features.fit(self.matrix).transform(self.matrix), added_col]
+            self.components = np.c_[self.features.fit(self.matrix).transform(self.matrix), col]
         else:
-            self.features.fit(self.matrix).transform(self.matrix)
+            self.components = self.features.fit(self.matrix).transform(self.matrix)
