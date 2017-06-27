@@ -1,3 +1,6 @@
+import sys
+import classes.constants as constants
+constants.CHANNEL_TRESHOLD = int(sys.argv[1])
 from classes.OpenBciTasks import OpenBciThreadedTasks
 from classes import ImageHelpers
 from Tkinter import *
@@ -10,7 +13,6 @@ from classes.featureselect import FeatureSelect
 from classes.helpers import Helpers
 from classes.classify import Classify
 from classes.precision import Precision
-import classes.constants as constants
 from time import sleep
 
 DIR = 'experiments/colors'
@@ -76,10 +78,10 @@ def input_preprocess_featureselect_arr(header, train_rows, mapping=None, do_col=
             preprocess.remove_dc_offset()
             preprocess.resample(100)
             preprocess.detrend()
-            n_channels = preprocess.discard_columns_by_ratio_to_median()
             # preprocess.notch_filter(50)
             preprocess.bandpass_filter(1, 50)
-            # preprocess.discard_datapoints_below_or_over()
+            n_channels = preprocess.discard_columns_by_ratio_to_median()
+            # preprocess.discsard_datapoints_below_or_over()
             # preprocess.discard_datapoints_by_ratio_to_median()
             # preprocess.fft()
             preprocess.min_max_scale()
